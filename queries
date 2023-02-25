@@ -1,0 +1,68 @@
+/* minions - edges, partners - documents */
+
+/*
+	go - group volume
+	lo - personal volume
+*/
+
+/* case 1 - linked list without compression */
+
+/* fill partners with random lo and go=1000 with 100k writes - 1.680s */
+FOR i IN 1..100000
+    LET l = FLOOR(RAND() * 1000)
+    INSERT {
+      _key: CONCAT("user", i),
+      lo: l,
+      go: 1000
+    } IN partners
+
+
+/* fill minions linked list (edges) with 100k-1 writes - 3.133s */
+FOR i IN 1..99999
+  INSERT {
+    _from: CONCAT("partners/user", i),
+    _to: CONCAT("partners/user", i+1),
+    vertex: CONCAT("user", i)
+  } INTO minions
+  
+
+/* 
+	1.1 
+	get graph with 100k vertices by user id 
+	user1 -> user2 -> ... -> user100000
+	lo - random from 1 to 1000
+	go - 1000
+*/
+
+/* 
+	execution speed  
+	+inf (disconnect) 
+*/
+FOR v,e,p IN 1..100000 OUTBOUND 'partners/user1' GRAPH 'minions'
+    RETURN p
+
+/*  
+	execution speed  
+	+inf  
+*/
+FOR v,e,p IN 1..10000 OUTBOUND 'partners/user1' GRAPH 'minions'
+    RETURN p
+
+/* execution speed  
+	8.42618s - first time
+	6.28349s - second time
+	4.61313s - third time and next 
+*/
+FOR v,e,p IN 1..1000 OUTBOUND 'partners/user1' GRAPH 'minions'
+    RETURN p
+
+/* 
+	execution speed  
+	5.23348s - first time
+	4.90768s - second time and next
+*/
+FOR v,e,p IN 1..1000 OUTBOUND 'partners/user99000' GRAPH 'minions'
+    RETURN p
+
+
+
