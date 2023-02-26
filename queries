@@ -65,4 +65,27 @@ FOR v,e,p IN 1..1000 OUTBOUND 'partners/user99000' GRAPH 'minions'
     RETURN p
 
 
+/* case 2 - binary tree */
 
+/* fill bt with 100 nodes */
+FOR i IN 1..50
+  INSERT {
+    _from: CONCAT("partners/user", i),
+    _to: CONCAT("partners/user", i*2),
+    vertex: CONCAT("user", i)
+  } INTO minions  
+FOR i IN 1..50
+  INSERT {
+    _from: CONCAT("partners/user", i),
+    _to: CONCAT("partners/user", i*2 + 1),
+    vertex: CONCAT("user", i)
+  } INTO minions
+
+
+/* increase go for all upstream partners after adding user100 lo=100 */
+LET user = 'user100'
+LET addedLo = 100
+
+FOR v IN 0..100 INBOUND CONCAT('partners/', user) GRAPH 'minions'
+    LET l = v._key == user ? addedLo : 0
+    UPDATE v WITH { lo: v.lo + l, go: v.go + addedLo } IN partners
