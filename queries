@@ -35,20 +35,19 @@ FOR i IN 1..99999
 */
 
 /* 
-	execution speed  
-	+inf (disconnect) 
+	execution speed: +inf (disconnect) 
 */
 FOR v,e,p IN 1..100000 OUTBOUND 'partners/user1' GRAPH 'minions'
     RETURN p
 
 /*  
-	execution speed  
-	+inf  
+	execution speed: +inf  
 */
 FOR v,e,p IN 1..10000 OUTBOUND 'partners/user1' GRAPH 'minions'
     RETURN p
 
-/* execution speed  
+/* 
+	execution speed:  
 	8.42618s - first time
 	6.28349s - second time
 	4.61313s - third time and next 
@@ -57,7 +56,7 @@ FOR v,e,p IN 1..1000 OUTBOUND 'partners/user1' GRAPH 'minions'
     RETURN p
 
 /* 
-	execution speed  
+	execution speed:  
 	5.23348s - first time
 	4.90768s - second time and next
 */
@@ -89,3 +88,35 @@ LET addedLo = 100
 FOR v IN 0..100 INBOUND CONCAT('partners/', user) GRAPH 'minions'
     LET l = v._key == user ? addedLo : 0
     UPDATE v WITH { lo: v.lo + l, go: v.go + addedLo } IN partners
+
+/* 
+	count of users - 100k
+	without compression 
+*/
+/* 
+	max btree depth per 100k users - 2^16 vertices
+	execution speed: 5.93024s		
+*/
+for v,e,p IN 16..16 OUTBOUND 'partners_test/user1' GRAPH 'minions_test'
+    RETURN p
+
+/* 
+	2^13 + 2^14 + 2^15 + 2^16 vertices
+	execution speed: 16.65557s		
+*/
+for v,e,p IN 13..16 OUTBOUND 'partners_test/user1' GRAPH 'minions_test'
+    RETURN p
+
+/* 
+	2^10 + 2^11 + 2^12 + 2^13 vertices
+	execution speed: 2.14368s		
+*/
+for v,e,p IN 10..13 OUTBOUND 'partners_test/user1' GRAPH 'minions_test'
+    RETURN p
+
+/* 
+	2^7+ 2^8 + 2^9 + 2^10 vertices
+	execution speed: 0.23279s		
+*/
+for v,e,p IN 7..10 OUTBOUND 'partners_test/user1' GRAPH 'minions_test'
+    RETURN p
