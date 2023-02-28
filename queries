@@ -94,14 +94,14 @@ FOR v IN 0..100 INBOUND CONCAT('partners/', user) GRAPH 'minions'
 	without compression 
 */
 /* 
-	max btree depth per 100k users - 2^16 vertices
+	max btree depth per 100k users: 2^16 - 31072  vertices
 	execution speed: 5.93024s		
 */
 for v,e,p IN 16..16 OUTBOUND 'partners_test/user1' GRAPH 'minions_test'
     RETURN p
 
 /* 
-	2^13 + 2^14 + 2^15 + 2^16 vertices
+	2^13 + 2^14 + 2^15 + 2^16 - 31072 vertices
 	execution speed: 16.65557s		
 */
 for v,e,p IN 13..16 OUTBOUND 'partners_test/user1' GRAPH 'minions_test'
