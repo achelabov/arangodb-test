@@ -38,7 +38,7 @@ type User struct {
 	Go int `json:"go"`
 }
 
-func getVerticesCountInSameDepth(ctx context.Context, db adb.Database, rootUser string) int {
+func getVerticesCountInNextDepth(ctx context.Context, db adb.Database, rootUser string) int {
 	querystring := "FOR v IN 1..1 OUTBOUND @coll GRAPH 'minions' OPTIONS { bfs: true } RETURN v"
 	bindVars := map[string]interface{}{
 		"coll": "partners/" + rootUser,
@@ -66,8 +66,8 @@ func getVerticesCountInSameDepth(ctx context.Context, db adb.Database, rootUser 
 	return counter
 }
 
-func getNextVertex(ctx context.Context, db adb.Database, prevUser string, usersInSameDepth []string) (user string, userLo int) {
-	//	log.Println("head", prevUser, "not in", usersInSameDepth)
+func getNextVertex(ctx context.Context, db adb.Database, prevUser string, usersInSameDepth []string) (user string) {
+	log.Println("head", prevUser, "not in", usersInSameDepth)
 	querystring := "FOR v IN 1..1 OUTBOUND @coll GRAPH 'minions' OPTIONS { bfs: true } FILTER v._key NOT IN @users RETURN v"
 	bindVars := map[string]interface{}{
 		"coll":  "partners/" + prevUser,
@@ -90,12 +90,12 @@ func getNextVertex(ctx context.Context, db adb.Database, prevUser string, usersI
 		log.Fatalf("Doc returned: %v", err)
 	}
 
-	user, userLo = metadata.Key, doc.Lo
+	user = metadata.Key
 	return
 }
 
-func getHeadVertex(ctx context.Context, db adb.Database, curr string) string {
-	querystring := "FOR v IN 1..1 INBOUND @coll GRAPH 'minions' RETURN v"
+func getHeadVertex(ctx context.Context, db adb.Database, curr string) (user string) {
+	querystring := "FOR v IN 2..2 INBOUND @coll GRAPH 'minions' RETURN v"
 	bindVars := map[string]interface{}{
 		"coll": "partners/" + curr,
 	}
@@ -108,6 +108,7 @@ func getHeadVertex(ctx context.Context, db adb.Database, curr string) string {
 
 	var doc User
 	var metadata adb.DocumentMeta
+
 	metadata, err = cursor.ReadDocument(ctx, &doc)
 
 	if adb.IsNoMoreDocuments(err) {
@@ -116,7 +117,8 @@ func getHeadVertex(ctx context.Context, db adb.Database, curr string) string {
 		log.Fatalf("Doc returned: %v", err)
 	}
 
-	return metadata.Key
+	user = metadata.Key
+	return
 }
 
 func compressionTreversal(ctx context.Context, db adb.Database, user string, lo *int) {
@@ -135,37 +137,33 @@ func compressionTreversal(ctx context.Context, db adb.Database, user string, lo 
 		var doc User
 		var metadata adb.DocumentMeta
 		metadata, err = cursor.ReadDocument(ctx, &doc)
+
 		if adb.IsNoMoreDocuments(err) {
 			break
 		} else if err != nil {
 			log.Fatalf("Doc returned: %v", err)
 		}
+		log.Println("treverse ", metadata.Key)
 		if doc.Lo != 0 {
-			log.Println("user:", metadata.Key, "personal volume =", *lo, "+", doc.Lo)
 			*lo += doc.Lo
-			var nextUser string
-			var nextUserLo int
-			var usersInSameDepth = []string{metadata.Key}
-			headVertex := getHeadVertex(ctx, db, metadata.Key)
-			virticesCount := getVerticesCountInSameDepth(ctx, db, headVertex)
-			cntr := 1
-			//			log.Println("vertices count", virticesCount)
-			for nextUser, nextUserLo = getNextVertex(ctx, db, headVertex, usersInSameDepth); ; {
-				if nextUserLo == 0 || cntr == virticesCount {
-					break
-				} else if nextUserLo != 0 {
-					log.Println("user:", nextUser, "personal volume =", *lo, "+", nextUserLo)
-					*lo += nextUserLo
-				}
-				cntr++
-
-				usersInSameDepth = append(usersInSameDepth, nextUser)
-			}
-
-			compressionTreversal(ctx, db, nextUser, lo)
-			return
+			queue <- metadata.Key
+			//			log.Println("user:", metadata.Key, "added", doc.Lo, "lo,", "total lo =", *lo)
+		} else {
+			compressionTreversal(ctx, db, metadata.Key, lo)
 		}
 	}
+}
+
+var queue = make(chan string, 100000)
+
+func GetPersonalVolume(ctx context.Context, adb adb.Database) int {
+	var lo int
+	var l *int = &lo
+	compressionTreversal(ctx, adb, "user1", l)
+	for len(queue) != 0 {
+		compressionTreversal(ctx, adb, <-queue, l)
+	}
+	return lo
 }
 
 func main() {
@@ -177,10 +175,17 @@ func main() {
 	ctx, cancel := context.WithTimeout(context.Background(), time.Second*5)
 	defer cancel()
 
-	var lo int
-	var l *int = &lo
-
+	/* 1..2 lvl partners
 	compressionTreversal(ctx, db, "user1", l)
+	usersCount := len(queue)
+	for usersCount > 0 {
+		compressionTreversal(ctx, db, <-queue, l)
+		usersCount--
+	}*/
+
+	/* 1..inf lvl partners */
+	lo := GetPersonalVolume(ctx, db)
+
 	log.Println("personal volume", lo)
 
 }
