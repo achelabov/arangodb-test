@@ -121,10 +121,39 @@ func getHeadVertex(ctx context.Context, db adb.Database, curr string) (user stri
 	return
 }
 
-func compressionTreversal(ctx context.Context, db adb.Database, user string, lo *int) {
-	querystring := "FOR v,e,p IN 1..1 OUTBOUND @coll GRAPH 'minions' RETURN v"
+func treversalWithoutCompression(ctx context.Context, db adb.Database, user string, lo *int) {
+	querystring := "FOR v,e,p IN 1..100 OUTBOUND @coll GRAPH 'minions_test' RETURN v"
 	bindVars := map[string]interface{}{
-		"coll": "partners/" + user,
+		"coll": "partners_test/" + user,
+	}
+
+	cursor, err := db.Query(ctx, querystring, bindVars)
+	if err != nil {
+		log.Fatalf("query failed: %v", err)
+	}
+	defer cursor.Close()
+
+	for {
+		var doc User
+		//var metadata adb.DocumentMeta
+		_, err := cursor.ReadDocument(ctx, &doc)
+
+		if adb.IsNoMoreDocuments(err) {
+			break
+		} else if err != nil {
+			log.Fatalf("Doc returned: %v", err)
+		}
+		//log.Println("treverse ", metadata.Key)
+		if doc.Lo != 0 {
+			*lo += doc.Lo
+		}
+	}
+}
+
+func compressionTreversal(ctx context.Context, db adb.Database, user string, lo *int) {
+	querystring := "FOR v,e,p IN 1..1 OUTBOUND @coll GRAPH 'minions_test' RETURN v"
+	bindVars := map[string]interface{}{
+		"coll": "partners_test/" + user,
 	}
 
 	cursor, err := db.Query(ctx, querystring, bindVars)
@@ -143,7 +172,7 @@ func compressionTreversal(ctx context.Context, db adb.Database, user string, lo 
 		} else if err != nil {
 			log.Fatalf("Doc returned: %v", err)
 		}
-		log.Println("treverse ", metadata.Key)
+		//log.Println("treverse ", metadata.Key)
 		if doc.Lo != 0 {
 			*lo += doc.Lo
 			queue <- metadata.Key
@@ -156,13 +185,21 @@ func compressionTreversal(ctx context.Context, db adb.Database, user string, lo 
 
 var queue = make(chan string, 100000)
 
-func GetPersonalVolume(ctx context.Context, adb adb.Database) int {
+func GetPersonalVolumes(ctx context.Context, adb adb.Database) int {
 	var lo int
 	var l *int = &lo
 	compressionTreversal(ctx, adb, "user1", l)
 	for len(queue) != 0 {
 		compressionTreversal(ctx, adb, <-queue, l)
 	}
+	return lo
+}
+
+func GetPersonalVolumesWithoutCompression(ctx context.Context, adb adb.Database) int {
+	var lo int
+	var l *int = &lo
+	treversalWithoutCompression(ctx, adb, "user1", l)
+
 	return lo
 }
 
@@ -184,7 +221,7 @@ func main() {
 	}*/
 
 	/* 1..inf lvl partners */
-	lo := GetPersonalVolume(ctx, db)
+	lo := GetPersonalVolumes(ctx, db)
 
 	log.Println("personal volume", lo)
 

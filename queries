@@ -120,3 +120,20 @@ for v,e,p IN 10..13 OUTBOUND 'partners_test/user1' GRAPH 'minions_test'
 */
 for v,e,p IN 7..10 OUTBOUND 'partners_test/user1' GRAPH 'minions_test'
     RETURN p
+
+/* fill tree rand lo, 100k users - 4.084s */
+FOR u IN partners_test
+    LET r = FLOOR(RAND() * 100)
+    LET l = r > 50 ? r : 0
+    UPDATE {_key: u._key, lo: l, go: 100} IN partners_test
+
+/*
+  get lo sum in graph with 10k vertices and random lo's using compression algorighm
+  execution time: 9.171s
+*/
+
+/* 
+  10k vertices
+  BenchmarkCompressionTreversal-4                        1        7250250609 ns/op
+  BenchmarkTreversalWithoutCompression-4                 4         264545588 ns/op
+*/
