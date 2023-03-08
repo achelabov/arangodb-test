@@ -134,6 +134,6 @@ FOR u IN partners_test
 
 /* 
   10k vertices
-  BenchmarkCompressionTreversal-4                        1        7250250609 ns/op
-  BenchmarkTreversalWithoutCompression-4                 4         264545588 ns/op
+  BenchmarkCompressionTraversal-4                        1        7250250609 ns/op
+  BenchmarkTraversalWithoutCompression-4                 4         264545588 ns/op
 */

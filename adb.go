@@ -121,10 +121,12 @@ func getHeadVertex(ctx context.Context, db adb.Database, curr string) (user stri
 	return
 }
 
-func treversalWithoutCompression(ctx context.Context, db adb.Database, user string, lo *int) {
-	querystring := "FOR v,e,p IN 1..100 OUTBOUND @coll GRAPH 'minions_test' RETURN v"
+func traversal(ctx context.Context, db adb.Database, headUser string, minDepth, maxDepth int) {
+	querystring := "FOR v,e,p IN @from..@to OUTBOUND @coll GRAPH 'minions' RETURN {v,e}"
 	bindVars := map[string]interface{}{
-		"coll": "partners_test/" + user,
+		"from": minDepth,
+		"to":   maxDepth,
+		"coll": "partners/" + headUser,
 	}
 
 	cursor, err := db.Query(ctx, querystring, bindVars)
@@ -135,22 +137,18 @@ func treversalWithoutCompression(ctx context.Context, db adb.Database, user stri
 
 	for {
 		var doc User
-		//var metadata adb.DocumentMeta
-		_, err := cursor.ReadDocument(ctx, &doc)
+		_, err = cursor.ReadDocument(ctx, &doc)
 
 		if adb.IsNoMoreDocuments(err) {
 			break
 		} else if err != nil {
 			log.Fatalf("Doc returned: %v", err)
 		}
-		//log.Println("treverse ", metadata.Key)
-		if doc.Lo != 0 {
-			*lo += doc.Lo
-		}
+		//		log.Println("got", metadata.Key)
 	}
 }
 
-func compressionTreversal(ctx context.Context, db adb.Database, user string, lo *int) {
+func compressionTraversal(ctx context.Context, db adb.Database, user string, lo *int) {
 	querystring := "FOR v,e,p IN 1..1 OUTBOUND @coll GRAPH 'minions_test' RETURN v"
 	bindVars := map[string]interface{}{
 		"coll": "partners_test/" + user,
@@ -172,13 +170,12 @@ func compressionTreversal(ctx context.Context, db adb.Database, user string, lo 
 		} else if err != nil {
 			log.Fatalf("Doc returned: %v", err)
 		}
-		//log.Println("treverse ", metadata.Key)
 		if doc.Lo != 0 {
 			*lo += doc.Lo
 			queue <- metadata.Key
 			//			log.Println("user:", metadata.Key, "added", doc.Lo, "lo,", "total lo =", *lo)
 		} else {
-			compressionTreversal(ctx, db, metadata.Key, lo)
+			compressionTraversal(ctx, db, metadata.Key, lo)
 		}
 	}
 }
@@ -188,20 +185,21 @@ var queue = make(chan string, 100000)
 func GetPersonalVolumes(ctx context.Context, adb adb.Database) int {
 	var lo int
 	var l *int = &lo
-	compressionTreversal(ctx, adb, "user1", l)
+	compressionTraversal(ctx, adb, "user1", l)
 	for len(queue) != 0 {
-		compressionTreversal(ctx, adb, <-queue, l)
+		compressionTraversal(ctx, adb, <-queue, l)
 	}
 	return lo
 }
 
+/*
 func GetPersonalVolumesWithoutCompression(ctx context.Context, adb adb.Database) int {
 	var lo int
 	var l *int = &lo
-	treversalWithoutCompression(ctx, adb, "user1", l)
+	traversalWithoutCompression(ctx, adb, "user1", l)
 
 	return lo
-}
+}*/
 
 func main() {
 	db, err := dbConn()
@@ -213,16 +211,15 @@ func main() {
 	defer cancel()
 
 	/* 1..2 lvl partners
-	compressionTreversal(ctx, db, "user1", l)
+	compressionTraversal(ctx, db, "user1", l)
 	usersCount := len(queue)
 	for usersCount > 0 {
-		compressionTreversal(ctx, db, <-queue, l)
+		compressionTraversal(ctx, db, <-queue, l)
 		usersCount--
-	}*/
-
-	/* 1..inf lvl partners */
+	}
 	lo := GetPersonalVolumes(ctx, db)
-
 	log.Println("personal volume", lo)
+	*/
 
+	traversal(ctx, db, "user1", 1, 2)
 }
