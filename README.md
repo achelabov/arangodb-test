@@ -41,3 +41,16 @@ BenchmarkTreversalFrom10To13Lvl-4              1         4873615153 ns/op // 4,8
 BenchmarkTreversalFrom7To10Lvl-4               3          489871877 ns/op // 0,489872s
 BenchmarkTreversalFrom1To16Lvl-4               1        34967829269 ns/op // 34,96783s
 ```
+
+getting main bonus
+```
+BenchmarkGetMainBonusBronze-4               1557            813796 ns/op // 0,00081s
+BenchmarkGetMainBonusBronzePro-4            1240            990141 ns/op // 0,00099s
+BenchmarkGetMainBonusSilver-4                710           1472167 ns/op // 0,00147s
+BenchmarkGetMainBonusSilverPro-4             470           2712180 ns/op // 0,00271s
+BenchmarkGetMainBonusGold-4                  228           4983181 ns/op // 0.00498s
+BenchmarkGetMainBonusGoldPro-4               148           8635871 ns/op // 0,00864s
+BenchmarkGetMainBonusPlatinum-4               73          16189258 ns/op // 0,01619s
+BenchmarkGetMainBonusPlatinimPro-4            39          32637129 ns/op // 0,03264s
+BenchmarkGetMainBonusDiamond-4                18          60731154 ns/op // 0,06073s
+```

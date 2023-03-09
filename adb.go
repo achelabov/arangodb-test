@@ -148,6 +148,36 @@ func traversal(ctx context.Context, db adb.Database, headUser string, minDepth, 
 	}
 }
 
+func getMainBonus(ctx context.Context, db adb.Database, headUser string, minDepth, maxDepth int, sum *int) {
+	querystring := "FOR v,e,p IN @from..@to OUTBOUND @coll GRAPH 'minions' RETURN v"
+	bindVars := map[string]interface{}{
+		"from": minDepth,
+		"to":   maxDepth,
+		"coll": "partners/" + headUser,
+	}
+
+	cursor, err := db.Query(ctx, querystring, bindVars)
+	if err != nil {
+		log.Fatalf("query failed: %v", err)
+	}
+	defer cursor.Close()
+
+	for {
+		var doc User
+		_, err = cursor.ReadDocument(ctx, &doc)
+
+		if adb.IsNoMoreDocuments(err) {
+			break
+		} else if err != nil {
+			log.Fatalf("Doc returned: %v", err)
+		}
+		if doc.Lo != 0 {
+			*sum += doc.Lo
+		}
+		//		log.Println("got", metadata.Key)
+	}
+}
+
 func compressionTraversal(ctx context.Context, db adb.Database, user string, lo *int) {
 	querystring := "FOR v,e,p IN 1..1 OUTBOUND @coll GRAPH 'minions_test' RETURN v"
 	bindVars := map[string]interface{}{
@@ -221,5 +251,10 @@ func main() {
 	log.Println("personal volume", lo)
 	*/
 
-	traversal(ctx, db, "user1", 1, 2)
+	//traversal(ctx, db, "user1", 1, 2)
+
+	var sum int
+	ptrSum := &sum
+	getMainBonus(ctx, db, "user1", 1, 2, ptrSum)
+	log.Println("main bounus =", sum)
 }
